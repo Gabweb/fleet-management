@@ -16,7 +16,7 @@ To connect a second generation Shelly device do the following:
 2. Navigate to Networks -> Outbound websocket
 3. Click the toggle button that enables the outbound websocket and enter the address of the fleet management server followed by `/shelly` (hint: `ws://<your ip>:7011/shelly`). 
 
-After that the device should show up in the home page of the application.
+After that the device should show up in the home page of the application. Navigate to [http://<your_ip>:7011/](http://<your_ip>:7011/) and login with the default credentials username `admin` and password `admin`.
 
 
 ## Codebase
