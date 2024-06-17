@@ -1,44 +1,59 @@
 <template>
-    <aside class="side-menu p-4 is-flex is-flex-direction-column is-justify-content-space-between" style="width: 200px">
-        <div>
-            <img src="https://home.shelly.cloud/images/shelly-logo.svg" width="112" height="28" class="mb-4" />
-
-            <aside class="menu">
-                <ul class="menu-list">
-                    <li v-for="item in items" :key="item.name" @click="router.push(item.link)">
-                        <a class="icon-text" :class="{ 'is-active': isActive(item.link) }">
-                            <span class="icon">
-                                <i :class=item.icon></i>
-                            </span>
-                            <span>{{ item.name }}</span>
-                        </a>
-                    </li>
-                </ul>
-            </aside>
+    <div v-if="smaller">
+        <div
+            class="fixed bottom-0 left-1/2 w-11/12 z-10 -translate-x-1/2 flex flex-row h-[4rem] md:h-[5rem] border border-gray-600 rounded-t-xl bg-gray-900/50 backdrop-blur-sm justify-around"
+        >
+            <!-- Items -->
+            <div
+                v-for="item in items"
+                :key="item.name"
+                class="w-auto h-16 flex flex-col justify-evenly hover:cursor-pointer my-auto"
+                @click="linkClicked(item.link)"
+            >
+                <div class="flex flex-col items-center text-center" :class="{ 'text-blue-400': isActive(item.link) }">
+                    <span class="text-xl md:text-2xl">
+                        <i :class="item.icon"></i>
+                    </span>
+                    <span class="text-xs line-clamp-1 hidden md:block">{{ item.name }}</span>
+                </div>
+            </div>
         </div>
-
-        <aside class="menu">
-            <ul class="menu-list">
-                <li>
-                    <a class="icon-text" @click="logout">
-                        <span class="icon">
-                            <i class="fas fa-right-from-bracket"></i>
-                        </span>
-                        <span>Log out</span>
-                    </a>
-                </li>
-            </ul>
-        </aside>
+    </div>
+    <aside v-else class="min-w-[7rem] mt-2">
+        <div
+            class="h-full z-10 flex flex-col border border-gray-600 rounded-tr-xl bg-gray-900 bg-opacity-50 backdrop-blur"
+        >
+            <div
+                v-for="item in items"
+                :key="item.name"
+                class="flex flex-col items-center justify-center border-b border-gray-600 w-full h-[85px] hover:cursor-pointer"
+                @click="linkClicked(item.link)"
+            >
+                <div class="flex flex-col items-center" :class="{ 'text-blue-400': isActive(item.link) }">
+                    <span class="text-2xl">
+                        <i :class="item.icon"></i>
+                    </span>
+                    <span class="text-sm">{{ item.name }}</span>
+                </div>
+            </div>
+            <!-- <div class="h-[40px]">
+                <figure>
+                    <img src="https://control.shelly.cloud/images/shelly-logo.svg" width="112" height="28" />
+                </figure>
+            </div> -->
+        </div>
     </aside>
 </template>
 
 <script setup lang="ts">
-import { useSystemStore } from "@/stores/system";
-import { useRouter, useRoute } from "vue-router";
-import { reactive, watch, onMounted, toRef } from "vue";
+import { useRouter, useRoute } from 'vue-router/auto';
+import { reactive, onMounted } from 'vue';
+import * as ws from '@/tools/websocket';
+import { useBreakpoints, breakpointsTailwind } from '@vueuse/core';
 
-const systemStore = useSystemStore();
-const config = toRef(systemStore, 'config')
+const breakpoints = useBreakpoints(breakpointsTailwind);
+
+const smaller = breakpoints.smaller('lg');
 
 type link_t = {
     link: string;
@@ -49,101 +64,69 @@ type link_t = {
 const router = useRouter();
 const route = useRoute();
 
-const items: link_t[] = reactive([
-    {
-        link: "/",
-        name: "Devices",
-        icon: "fa-solid fa-home"
-    },
-    {
-        link: "/mass-rpc",
-        name: "Mass RPC",
-        icon: "fa-solid fa-code"
-    },
-    {
-        link: "/apply-config",
-        name: "Apply Config",
-        icon: "fa-solid fa-code"
+function linkClicked(link: string) {
+    // open external links in another tab
+    if (link.startsWith('http://') || link.startsWith('https://')) {
+        window.open(link, '_blank');
+        return;
     }
+
+    router.push(link);
+}
+
+const items = reactive<link_t[]>([
+    {
+        link: '/dash/-1',
+        name: 'Dashboard',
+        icon: 'fa-solid fa-gauge-high',
+    },
+    {
+        link: '/devices/devices',
+        name: 'Devices',
+        icon: 'fa-solid fa-microchip',
+    },
+    {
+        link: '/automations/actions',
+        name: 'Automations',
+        icon: 'fa-solid fa-wand-sparkles',
+    },
+    {
+        link: '/settings/app',
+        name: 'Settings',
+        icon: 'fa-solid fa-gear',
+    },
 ]);
 
-function buildItems(config: any) {
-    items.length = 0;
-    items.push({
-        link: "/",
-        name: "Devices",
-        icon: "fa-solid fa-home"
-    });
-
-    if (config.discover_local) {
-        items.push({
-            link: "/discovered",
-            name: "Discovered",
-            icon: "fa-solid fa-wifi"
-        })
-    }
-
-    items.push({
-        link: "/rpc",
-        name: "Mass RPC",
-        icon: "fa-solid fa-code"
-    }, {
-        link: "/apply-config",
-        name: "Apply Config",
-        icon: "fa-solid fa-code"
-    })
-
-    if (config.ble) {
-        items.push({
-            link: "/bluetooth",
-            name: "Bluetooth",
-            icon: "fa-brands fa-bluetooth"
-        })
-    }
-
-    items.push({
-        link: "/plugins",
-        name: "Plugins",
-        icon: "fa-solid fa-puzzle-piece"
-    },{
-        link: "/settings",
-        name: "Settings",
-        icon: "fa-solid fa-gear"
-    })
-}
-
-watch(config, config => {
-    buildItems(config)
+onMounted(() => {
+    ws.getRegistry('ui')
+        .getItem('menuItems')
+        .then((menuItems: unknown) => {
+            try {
+                if (Array.isArray(menuItems))
+                    for (const entry of menuItems)
+                        if (
+                            typeof entry === 'object' &&
+                            typeof entry.link === 'string' &&
+                            typeof entry.name === 'string' &&
+                            typeof entry.icon === 'string'
+                        ) {
+                            console.log('adding menuitem from server', entry);
+                            items.push(entry);
+                        }
+            } catch (error) {
+                console.error('cannot add menu entries from ' + JSON.stringify(menuItems), error);
+            }
+        });
 });
 
-onMounted(() => {
-    buildItems(systemStore.config)
-})
-
-function logout() {
-    useSystemStore().setToken("");
-}
-
 function isActive(link: string) {
-    return route.path == link;
-}
+    if (!link.startsWith('/')) return;
 
+    if (link == '/') {
+        return route.path == '/';
+    }
+
+    const prefix = link.split('/')[1];
+    return route.path.startsWith('/' + prefix);
+}
 </script>
-
-<style scoped>
-* {
-    color: white !important;
-    text-align: left;
-}
-
-.menu-list>li>a:hover {
-    background-color: hsl(0, 0%, 26%);
-}
-
-.side-menu {
-    border-right: 1px solid rgb(49, 52, 56) !important;
-    position: fixed;
-    height: 100vh;
-    z-index: 10;
-}
-</style>

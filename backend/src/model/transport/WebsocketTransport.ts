@@ -1,12 +1,18 @@
-import Transport from "./Transport";
-import { WebSocket } from "ws";
-
-export default class WebSocketTransport extends Transport {
+import RpcTransport from './RpcTransport';
+import WebSocket from 'ws';
+export default class WebSocketTransport extends RpcTransport {
+    public override name: string = 'ws';
     #ws: WebSocket;
 
     constructor(ws: WebSocket) {
         super();
         this.#ws = ws;
+        ws.on('close', () => {
+            this._eventEmitter.emit('close');
+        });
+        ws.on('error', (e) => {
+            this._eventEmitter.emit('error', e);
+        });
         ws.on('message', (message: any) => {
             this.parseMessage(message);
         });
@@ -16,9 +22,8 @@ export default class WebSocketTransport extends Transport {
         this.#ws.send(params);
     }
 
-    public destroy(): void {
-        if (this.#ws.readyState == WebSocket.OPEN || this.#ws.readyState == WebSocket.CONNECTING) {
-            this.#ws.close();
-        }
+    public override destroy(): void {
+        super.destroy();
+        this.#ws.close();
     }
 }

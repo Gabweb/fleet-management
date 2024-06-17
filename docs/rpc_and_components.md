@@ -25,7 +25,6 @@ and the response looks as follows:
         "fleetmanager",
         "device",
         "mdns",
-        "groups",
         "user",
         "plugin:connect-ble-station",
         "plugin:greetings",
@@ -99,26 +98,4 @@ Return an object of all the connected devices with their info,status, and settin
 #### Disable mDNS from setConfig
 ```javascript
 {"id":1,"dst":"FLEET_MANAGER","method":"mdns.setconfig","src":"demo", "params": {"config": { "enable": false }}}
-```
-
-### Groups
-
-#### List Groups
-```javascript
-{"id":1,"dst":"FLEET_MANAGER","method":"groups.list","src":"demo"}
-```
-
-#### Create Group
-```javascript
-{"id":1,"dst":"FLEET_MANAGER","method":"groups.create","src":"demo", "params": {"name": "Location", "values": ["Sofia", "Plovdiv", "Burgas"]}}
-```
-
-#### Update Group
-```javascript
-{"id":1,"dst":"FLEET_MANAGER","method":"groups.update","src":"demo", "params": {"name": "Location", "values": ["London", "Coventry", "Southampton"]}}
-```
-
-#### Delete Group
-```javascript
-{"id":1,"dst":"FLEET_MANAGER","method":"groups.delete","src":"demo", "params": {"name": "Location"}}
 ```

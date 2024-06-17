@@ -1,0 +1,18 @@
+{
+    "name": "@fleet-management/greetings",
+    "version": "1.0.0",
+    "description": "demo plugin, says hello",
+    "main": "index.js",
+    "author": "Shelly Europe",
+    "config": {
+        "menuItems": [{
+            "link": "http://shelly.com",
+            "name": "Shelly Shop",
+            "icon": "fa-solid fa-shopping-cart"
+        },{
+            "link": "/plugin/greetings",
+            "name": "local link",
+            "icon": "fa-solid fa-shopping-cart"
+        }]
+    }
+}

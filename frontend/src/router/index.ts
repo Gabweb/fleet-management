@@ -1,51 +1,35 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
-
-const routes: Array<RouteRecordRaw> = [
-    {
-        path: '/',
-        name: 'Devices',
-        component: () => import('../views/Devices.vue')
-    },
-    {
-        path: '/discovered',
-        name: 'Discovered',
-        component: () => import("../views/Discovered.vue")
-    },
-    {
-        path: '/device/:device_mac',
-        name: 'Device',
-        component: () => import('../views/SingleDevice.vue')
-    },
-    {
-        path: "/apply-config",
-        name: "Apply Config",
-        component: () => import("../views/ApplyConfig.vue")
-    },
-    {
-        path: "/login",
-        name: "Login",
-        component: () => import("../views/Login.vue")
-    },
-    {
-        path: '/settings',
-        name: 'Settings',
-        component: () => import("../views/Settings.vue")
-    },
-    {
-        path: '/plugins',
-        name: 'Plugins',
-        component: () => import("../views/Plugins.vue")
-    },
-    {
-        path: '/rpc',
-        name: 'RPC',
-        component: () => import("../views/RPC.vue")
-    }
-]
+import { createRouter, createWebHistory } from 'vue-router/auto';
+import { useSystemStore } from '@/stores/system';
 
 const router = createRouter({
-    history: createWebHistory('#'),
-    routes,
-})
+    history: createWebHistory(import.meta.env.PROD ? '#' : import.meta.env.BASE_URL),
+});
 
-export default router
+router.beforeEach((to, from, next) => {
+    // allow zitadel auth to pass
+    if (to.path.startsWith('/auth/signinwin')) {
+        next();
+        return;
+    }
+
+    const systemStore = useSystemStore();
+    if (systemStore.loggedIn) {
+        if (to.path === '/login') {
+            next('/');
+            return;
+        } else if (to.path == '/') {
+            next('/dash/-1');
+        }
+    } else {
+        if (to.path === '/login') {
+            next();
+        } else {
+            next('/login');
+        }
+        return;
+    }
+
+    next();
+});
+
+export default router;

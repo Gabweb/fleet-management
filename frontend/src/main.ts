@@ -1,26 +1,54 @@
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-import { createPinia } from 'pinia'
-import * as websocket from './tools/websocket';
-import './tools/http';
-import './assets/style.scss'
+import { createApp } from 'vue';
+import './style.css';
+import '@/constants';
+import App from './App.vue';
+import router from './router';
+import { createPinia } from 'pinia';
+import { USE_LOGIN_ZITADEL } from './constants';
+import zitadelAuth from '@/helpers/zitadelAuth';
 
-const pinia = createPinia();
+function init() {
+    const pinia = createPinia();
 
-createApp(App).use(pinia).use(router).mount('#app');
+    const app = createApp(App);
+    app.config.performance = true;
+    app.use(pinia);
+    app.use(router);
+    app.mount('#app');
 
-import { useDevicesStore } from "./stores/devices";
-import { useRpcStore } from "./stores/rpc";
-import { useSystemStore } from "./stores/system";
-const systemStore = useSystemStore();
-if(systemStore.loggedIn){
-    useDevicesStore().fetchDevices();
+    // Custom directive (v-lazyload) for loading images
+    app.directive('lazyload', (el) => {
+        // Grab the data-url property
+        const imageURL = el.dataset.url;
+
+        // If Intersection Observer is supported
+        if ('IntersectionObserver' in window) {
+            // Create New Intersection Observer Instance
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    // Logic for each entry passed to the callback function
+                    if (entry.isIntersecting) {
+                        el.src = imageURL;
+                    }
+                });
+            });
+
+            observer.observe(el);
+        } else {
+            // Logic if Intersection Observer is not supported
+            el.src = imageURL;
+        }
+    });
 }
-useRpcStore().fetchTemplates();
-systemStore.pingBackend();
-setInterval(() => {
-    systemStore.pingBackend();
-}, 30000);
 
-websocket.connect();
+if (USE_LOGIN_ZITADEL && zitadelAuth) {
+    console.debug('using zitadel login strategy');
+    zitadelAuth.oidcAuth.startup().then((ok) => {
+        if (ok) {
+            console.debug('Zitadel started OK');
+            init();
+        } else {
+            console.error('Startup was not ok');
+        }
+    });
+} else init();

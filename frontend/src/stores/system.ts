@@ -1,67 +1,72 @@
-import { defineStore } from 'pinia';
-import * as ws from '@/tools/websocket'
-import { healthCheck } from '@/tools/http'
-import { useDevicesStore } from './devices';
-import { computed, reactive, ref, Ref } from 'vue';
+import { defineStore, skipHydrate } from 'pinia';
+import * as ws from '@/tools/websocket';
+import { computed, ref, watch } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
+import * as websocket from '@/tools/websocket';
+import zitadelAuth from '@/helpers/zitadelAuth';
+import { USE_LOGIN_ZITADEL } from '@/constants';
 
 export const useSystemStore = defineStore('system', () => {
     const config = ref({
         ble: false,
+        mdns: { enable: false },
     });
-    const groups: Ref<Record<string, string[]>> = ref({});
-    const backend = reactive({
-        url: `http://${window.location.host}`,
-        connected: true
+
+    const localToken = useLocalStorage('fleet-management-token', '');
+
+    const decodedToken = computed(() => {
+        try {
+            if (USE_LOGIN_ZITADEL && zitadelAuth) {
+                return zitadelAuth.oidcAuth.userProfile;
+            }
+            return JSON.parse(atob(localToken.value.split('.')[1]));
+        } catch (error) {
+            return undefined;
+        }
     });
-    const token = ref(localStorage.getItem('fleet-management-token') || '');
 
     const loggedIn = computed(() => {
-        if (token.value.length == 0) {
-            return false;
-        }
-        let decoded;
-        try {
-            decoded = JSON.parse(atob(token.value.split(".")[1]));
-        } catch (error) {
-            return false;
-        }
+        if (USE_LOGIN_ZITADEL) {
+            return decodedToken.value.auth_time > 0;
+        } else {
+            if (
+                localToken.value.length == 0 ||
+                decodedToken.value == undefined ||
+                typeof decodedToken.value.exp !== 'number'
+            ) {
+                return false;
+            }
 
-        return Number(decoded.exp) > Date.now() / 1000;
+            return Number(decodedToken.value.exp) > Date.now() / 1000;
+        }
     });
 
     async function updateConfig() {
         try {
             config.value = await ws.getServerConfig();
         } catch (error) {
-            console.error("failed to get server config")
+            console.error('failed to get server config');
         }
     }
 
-    async function updateGroups() {
-        try {
-            groups.value = await ws.listGroups();
-        } catch (error) {
-            console.error("failed to get server config")
-        }
-    }
-
-    async function pingBackend() {
-        try {
-            backend.connected = await healthCheck().then(res => res.online === true);
-        } catch (error) {
-            console.error("error in backend health check", error)
-            backend.connected = false;
-        }
-    }
-
-    function setToken(pass_token: string) {
-        token.value = pass_token;
-        localStorage.setItem('fleet-management-token', pass_token);
-        useDevicesStore().fetchDevices();
-    }
+    watch(
+        loggedIn,
+        () => {
+            if (loggedIn.value) {
+                updateConfig();
+                websocket.connect();
+            } else {
+                websocket.close();
+            }
+        },
+        { immediate: true }
+    );
 
     return {
-        config, groups, backend, token, loggedIn,
-        updateConfig, updateGroups, pingBackend, setToken
+        token: skipHydrate(localToken),
+        config,
+        loggedIn,
+        updateConfig,
+        decodedToken,
     };
 });

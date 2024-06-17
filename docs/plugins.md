@@ -45,10 +45,20 @@ function on(rpcEvent, eventData) {
 ``` 
 Example load and unload functions look like this:
 ```javascript
-function load(properties) {
+function load({ call, defineComponent }: { call: tCall, defineComponent: tDefineComponent }) {
     console.log("Plugin loaded");
 }
 ```
+
+A plugin also can register components and make calls to other registered components. This can done in two ways. The `call` functions takes 2 parameters - the first one is the method and the second one is the params. The type definition of the `call` function is. A sample use case is:
+! call function is dependency injected in load method, so it can be uset inly in its closure.
+
+```javascript
+function load({ call, defineComponent }: { call: tCall, defineComponent: tDefineComponent }) {
+    await call("device.getinfo", { id: 'shellypro2pm-303030303030' });
+}
+```
+
 ``` javascript
 function unload() {
     console.log("Plugin unloaded")
@@ -57,17 +67,6 @@ function unload() {
 All of the three functions must be exported in order to be visible to fleet management. This can be done using:
 ``` javascript
 module.exports = { load, unload, on }
-```
-
-A plugin also can register components and make calls to other registered components. This can done in two ways. The first way is to use the globally defined functions `call` and `defineComponent`. The `call` functions takes 2 parameters - the first one is the method and the second one is the params. The type definition of the `call` function is:
-```javascript
-declare function call(method: string, params?: any): Promise<any>
-```
-and a sample use case is:
-```javascript
-call("fleetmanager.getconfig").then((res) => {
-    console.log("fleetmanager config is", res)
-});
 ```
 The `defineComponent` function also takes two arguments. The first is the name of the component and the second is a map of the methods. The type definition is:
 ```javascript
@@ -82,13 +81,6 @@ defineComponent({
             Promise.resolve({ msg: "Hello " + (params?.name || 'stranger') })]
     ])
 });
-```
-The seconds way to use `call` and `defineComponent` is from the arguments of the load function.
-```javascript
-function load(properties) {
-    call = properties.call;
-    defineComponent = properties.defineComponent;
-}
 ```
 ## Typescript support
 

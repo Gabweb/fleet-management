@@ -1,127 +1,157 @@
-import Transport from "./transport/Transport";
-import { ShellyDeviceEvents } from "./TypedEventEmitter";
-import * as EventManager from "../EventManager";
+/* eslint-disable no-dupe-class-members */
+import * as log4js from 'log4js';
+import * as ShellyEvents from '../modules/ShellyEvents';
+import type { entity_t } from '../types';
+import { store } from '../modules/PostgresProvider';
+import { composeDynamicComponent, proposeEntities } from '../modules/EntityComposer';
+import { handleMessage } from '../modules/ShellyMessageHandler';
+import AbstractDevice from './AbstractDevice';
 
-type source_t = 'ws' | 'local';
-interface ShellyDeviceProps {
-    transport: Transport,
-    source: source_t,
+const logger = log4js.getLogger('device');
+
+export default class ShellyDevice extends AbstractDevice {
+    protected override findMessageReason(key: string, message: any): string {
+        return findMessageReason(key, message);
+    }
+
+    generateEntities() {
+        return proposeEntities(this);
+    }
+
+    protected override onStateChange(): void {
+        this.#persistState();
+    }
+
+    async #persistState() {
+        try {
+            await store(this.shellyID, this.toJSON());
+        } catch (error) {
+            // do nothing
+            logger.warn('failed to persist state for', this.shellyID, String(error));
+        }
+    }
+
+    protected override onMessage(message: any, request?: any): void {
+        handleMessage(this, message, request);
+    }
+
+    override setComponentStatus(key: string, status: any) {
+        super.setComponentStatus(key, status);
+        const entity = this.findEntity(key);
+        if (entity) {
+            ShellyEvents.emitEntityStatusChange(entity, status);
+        }
+    }
+
+    public updateComponent(key: string, status: any, config: any) {
+        this.setComponentStatus(key, status);
+        this.setComponentConfig(key, config);
+
+        const { type, id } = parseComponentKey(key);
+
+        const entity: entity_t | null = composeDynamicComponent(
+            type,
+            this.config[key],
+            this.info.name as string,
+            this.shellyID
+        );
+
+        if (!entity) {
+            logger.error('Error composing entity for %s:%s', type, id);
+            return;
+        }
+
+        this.addEntity(entity);
+    }
+
+    public async fetchComponent(key: string) {
+        const { type, id } = parseComponentKey(key);
+
+        let status, config;
+
+        try {
+            [status, config] = await Promise.all([
+                this.sendRPC(`${type}.GetStatus`, id && { id }),
+                this.sendRPC(`${type}.GetConfig`, id && { id }),
+            ]);
+        } catch (error) {
+            logger.error('Error fetching component for %s:%s', type, id);
+            return;
+        }
+        this.updateComponent(key, status, config);
+    }
+
+    public override removeComponent(key: string) {
+        super.removeComponent(key);
+        const entity = this.findEntity(key);
+        if (!entity) {
+            return;
+        }
+
+        this.removeEntity(entity);
+    }
+
+    public forwardComponentEvent(
+        key: string,
+        event: 'single_push' | 'double_push' | 'triple_push' | 'long_push'
+    ) {
+        // search for entity with type and id
+        const entity = this.findEntity(key);
+
+        // exit if doesn't exist
+        if (!entity) {
+            return;
+        }
+
+        ShellyEvents.emitEntityEvent(entity, event);
+    }
+
+    private findEntity(key: string): entity_t | undefined {
+        const { type, id } = parseComponentKey(key);
+
+        return this.entities.find(
+            (entity) =>
+                entity.type === type &&
+                (!('id' in entity.properties) || entity.properties.id === id)
+        );
+    }
 }
 
-export default class ShellyDevice {
-    #transport: Transport;
-    #shellyID: string;
-    #status: any;
-    #deviceInfo: any;
-    #settings: any;
-    #source: source_t;
-    #groups: Record<string, string>;
+// ------------------------------------------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------------------------------------------
 
-    constructor(shellyID: string, props: ShellyDeviceProps) {
-        this.#shellyID = shellyID;
-        this.#transport = props.transport;
-        this.#source = props.source;
-        this.#groups = {};
+const SWITCH_CONSUMPTION_KEYS = ['current', 'apower', 'voltage'];
+function findMessageReason(key: string, value: Record<string, any>) {
+    const separatorIndex = key.indexOf(':');
+    const core = separatorIndex > -1 ? key.slice(0, separatorIndex) : key;
+    const valueKeys = Object.keys(value);
 
-        this.shellyRPC('shelly.getdeviceinfo');
-        this.shellyRPC('shelly.getstatus');
-        this.shellyRPC('shelly.getconfig');
+    // Generic checks
+    if (valueKeys.includes('aenergy')) {
+        return `${core}:aenergy`;
+    }
 
-        if (this.#source == 'ws') {
-            this.shellyRPC('kvs.getmany');
+    // breakdown switch into specific categories - output, aenergy, consumption
+    if (key.startsWith('switch')) {
+        if (valueKeys.includes('output')) {
+            return `${core}:output`;
+        }
+        if (valueKeys.find((entry) => SWITCH_CONSUMPTION_KEYS.includes(entry))) {
+            return `${core}:consumption`;
         }
     }
 
-    shellyRPC(method: string, params?: any, cb?: ShellyResponseCallback, silent = false) {
-        return this.#transport.shellyRPC(method, params, cb, silent);
-    }
+    return `${core}:generic`;
+}
 
-    sendUnsafe(message: any) {
-        return this.#transport.sendUnsafe(message);
-    }
+const ENDS_WITH_NUMBER = /:\d*$/;
+export function parseComponentKey(key: string): { type: string; id?: number } {
+    const type = key.replace(ENDS_WITH_NUMBER, '');
+    const id = parseInt(key.replace(`${type}:`, ''));
 
-    destroy() {
-        this.#transport.destroy();
-    }
-
-    setTransport(transport: Transport) {
-        this.#transport = transport;
-    }
-
-    on<TEventName extends keyof ShellyDeviceEvents>(
-        eventName: TEventName,
-        handler: (...eventArg: ShellyDeviceEvents[TEventName]) => void
-    ) {
-        this.emitter.on(eventName, handler as any)
-    }
-
-    get emitter() {
-        return this.transport.eventemitter;
-    }
-
-    get ready() {
-        return this.#deviceInfo != undefined
-            && this.#status != undefined
-            && this.#settings != undefined
-    }
-
-    set status(status: any) {
-        this.#status = status;
-        EventManager.emitShellyStatus(this);
-    }
-
-    set settings(settings: any) {
-        this.#settings = settings;
-        EventManager.emitShellySettings(this);
-    }
-
-    get groups() {
-        return this.#groups;
-    }
-
-    set groups(kvs: any) {
-        this.#groups = kvs;
-        EventManager.emitShellyGroups(this)
-    }
-
-    set deviceInfo(deviceInfo: any) {
-        this.#deviceInfo = deviceInfo;
-        EventManager.emitShellyDeviceInfo(this)
-    }
-
-    get deviceInfo() {
-        return this.#deviceInfo;
-    }
-
-    get shellyID() {
-        return this.#shellyID;
-    }
-
-    get status() {
-        return this.#status;
-    }
-
-    get settings() {
-        return this.#settings
-    }
-
-    get source() {
-        return this.#source;
-    }
-
-    get transport() {
-        return this.#transport;
-    }
-
-    toJSON() {
-        const external: ShellyDeviceExternal = {
-            shellyID: this.#shellyID,
-            source: this.#source,
-            info: this.#deviceInfo,
-            status: this.#status,
-            settings: this.#settings,
-            groups: this.#groups
-        }
-        return external;
-    }
+    return {
+        type,
+        ...(isFinite(id) ? { id } : {}),
+    };
 }

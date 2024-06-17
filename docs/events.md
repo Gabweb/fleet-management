@@ -1,5 +1,5 @@
 # Events
-Fleet Manager sends events in the form of notifications using the [JSON-RPC 2.0 specification](https://www.jsonrpc.org/specification). There are two groups of events:
+Fleet Manager sends events in the form of notifications using the [JSON-RPC 2.0 specification](https://www.jsonrpc.org/specification). There are two types of events:
 1. Related to Fleet Management
 2. Related to the connected Shelly devices
 
@@ -23,7 +23,7 @@ interface Connect extends Basic {
             info: any,
             status: any,
             settings: any,
-            groups: Record<string, string>
+            kvs: Record<string, string>
         }
     }
 }
@@ -90,14 +90,14 @@ interface Message extends Basic {
 }
 ```
 `req` is the JSON-RPC request that was send to the device. If the `req` object is `undefined` this means the Shelly device is sending a notification. If `req` is present, the Shelly device is responding to a command that was been send over Fleet Manager.
-### Shelly.Group
+### Shelly.KVS
 Type definition:
 ```javascript
-interface Group extends Basic {
-    method: "Shelly.Group"
+interface KVS extends Basic {
+    method: "Shelly.KVS"
     params: {
         shellyID: string,
-        groups: Record<string, string>
+        kvs: Record<string, string>
     }
 }
 ```

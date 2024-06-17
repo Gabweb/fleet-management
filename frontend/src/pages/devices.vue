@@ -1,0 +1,16 @@
+<template>
+    <TabPageSelector :tabs="tabs" />
+</template>
+
+<script setup lang="ts">
+import TabPageSelector from '@/components/core/TabPageSelector.vue';
+
+const tabs: [string, string][] = [
+    ['Devices', '/devices/devices'],
+    ['Entities', '/devices/entities'],
+    ['Groups', '/devices/groups'],
+    ['Configurations', '/devices/configurations'],
+    ['Discovered', '/devices/discovered'],
+    ['Waiting Room', '/devices/waiting-room'],
+];
+</script>

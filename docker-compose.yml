@@ -1,41 +1,100 @@
-version: '3.9'
 services:
   fleet-management:
-    build: .
+    privileged: true
+    container_name: fleet-management
+    image: shellygroup/fleet-management:latest
+    depends_on:
+      timescale-fleet-manager:
+        condition: "service_healthy"
+      fleet-management-db-init:
+        condition: "service_completed_successfully"
     environment:
       - FLEET_MANAGER_PORT=7011
+      - 'fleet-manager_internalStorage__connection__host=timescale-fleet-manager'
+      - 'fleet-manager_internalStorage__connection__user=fm'
+      - 'fleet-manager_internalStorage__connection__password=fm'
+      - 'fleet-manager_internalStorage__connection__database=fm'
+      - 'plugin-em-reports_connection__host=timescale-fleet-manager'
+      - 'plugin-em-reports_connection__user=fm'
+      - 'plugin-em-reports_connection__password=fm'
+      - 'plugin-em-reports_connection__database=fm'
+      - 'PLUGINS_FOLDER=/app/plugins'
+    volumes:
+      - '/run/dbus:/run/dbus:z'
+      - 'fm-backend-cfg-v:/app/backend/cfg/'
+      - 'fm-backend-plugins-v:/app/frontend/src/pages/plugin/'
     ports:
       - 7011:7011
-    networks:
-      - fleet-net
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:7011/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
     restart: unless-stopped
-    volumes:
-      - logs:/app/backend/logs
+    networks:
+      - "fleet-net"
     deploy:
       resources:
         limits:
-          cpus: '0.50'
-          memory: 512M
-          pids: 200
-        reservations:
-          cpus: '0.25'
-          memory: 256M
+          cpus: "1"
+          memory: 1024M
     logging:
       driver: json-file
       options:
         max-size: "10m"
         max-file: "3"
+
+  fleet-management-db-init:
+    image: timescale/timescaledb:latest-pg16
+    networks:
+      - fleet-net
+    depends_on:
+      timescale-fleet-manager:
+        condition: "service_healthy"
+    entrypoint: psql postgres://postgres:mysecretpassword@timescale-fleet-manager:5432 -c "CREATE DATABASE fm;" -c "\\connect fm;" -c "CREATE USER fm WITH ENCRYPTED PASSWORD 'fm';" -c "GRANT ALL PRIVILEGES ON DATABASE fm TO fm;" -c "CREATE SCHEMA IF NOT EXISTS migration AUTHORIZATION fm;"
+
+  timescale-fleet-manager:
+    restart: unless-stopped
+    container_name: timescale-fleet-manager
+    image: timescale/timescaledb:latest-pg16
+    volumes:
+      - timescale-fleet-manager-v:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+    networks:
+      fleet-net:
+    tty: true
+    stdin_open: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1m"
+        max-file: "5"
+    deploy:
+      resources:
+        limits:
+          memory: "1024M"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  mdns-repeater:
+    image: shellygroup/mdns-repeater:latest
+    environment:
+      LISTEN_ON: ${MDNS_ON}
+      REPEAT_TO: ${MDNS_TO}
+    container_name: mdns-repeater
+    restart: unless-stopped
+    network_mode: "host"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 64M
 networks:
   fleet-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.16.1.0/24
+
 volumes:
   logs:
+  fm-backend-cfg-v:
+  fm-backend-plugins-v:
+  timescale-fleet-manager-v:

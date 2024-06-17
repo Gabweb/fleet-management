@@ -1,62 +1,146 @@
 export interface incoming_jsonrpc {
-    jsonrpc?: "2.0",
-    id: number,
-    src: string,
-    dst?: string | string[],
-    method: string,
-    params?: undefined | any | any[]
+    jsonrpc?: '2.0';
+    id: number;
+    src: string;
+    dst?: string | string[];
+    method: string;
+    params?: undefined | any | any[];
 }
 
 interface outgoing_jsonrpc_success {
-    jsonrpc?: "2.0",
-    id: number,
-    src: string,
-    dst: string,
-    result: any
+    jsonrpc?: '2.0';
+    id: number;
+    src: string;
+    dst: string;
+    result: any;
 }
 
 export const ERROR_CODES = {
+    DEVICE_NOT_FOUND_ERROR: -32900,
+    TIMEOUT_ERROR: -32800,
     PARSE_ERROR: -32700,
     INVALID_REQUEST: -32600,
     METHOD_NOT_FOUND: -32601,
     INVALID_PARAMS: -32602,
     SERVER_ERROR: -32001,
-}
+};
 
 interface outgoing_jsonrpc_error {
-    jsonrpc?: "2.0",
-    id: number | null,
-    src: string,
-    dst?: string | undefined,
+    jsonrpc?: '2.0';
+    id: number | null;
+    src: string;
+    dst?: string | undefined;
     error: {
-        code: number,
-        message: string,
-    }
+        code: number;
+        message: string;
+    };
 }
 
-export type outgoing_jsonrpc = outgoing_jsonrpc_success | outgoing_jsonrpc_error
+export interface jsonrpc_outgoing_event {
+    src: string;
+    dst: string;
+    method: 'NotifyEvent';
+    params: {
+        ts: number;
+        events: {
+            component: string;
+            event: string;
+        }[];
+    };
+}
+
+export interface jsonrpc_outgoing_status {
+    src: string;
+    dst: string;
+    method: 'NotifyStatus';
+    params: {
+        ts: number;
+        [component: string]: any;
+    };
+}
+
+export type outgoing_jsonrpc = outgoing_jsonrpc_success | outgoing_jsonrpc_error;
 
 export function parseIncomingJsonRpc(data: any): data is incoming_jsonrpc {
-    return typeof data === 'object'
-        && ((typeof data.jsonrpc === 'string' && data.jsonrpc === '2.0') || typeof data.jsonrpc === 'undefined')
-        && typeof data.id === 'number'
-        && typeof data.src === 'string'
-        && typeof data.method === 'string'
-        && (typeof data.dst === 'undefined' || typeof data.dst === 'string' || (typeof data.dst === 'object' && Array.isArray(data.dst)))
-        && (typeof data.params === 'undefined' || typeof data.params === 'object')
+    return (
+        typeof data === 'object' &&
+        ((typeof data.jsonrpc === 'string' && data.jsonrpc === '2.0') ||
+            typeof data.jsonrpc === 'undefined') &&
+        typeof data.id === 'number' &&
+        typeof data.src === 'string' &&
+        typeof data.method === 'string' &&
+        (typeof data.dst === 'undefined' ||
+            typeof data.dst === 'string' ||
+            (typeof data.dst === 'object' && Array.isArray(data.dst))) &&
+        (typeof data.params === 'undefined' || typeof data.params === 'object')
+    );
 }
 
-export function buildOutgoingJsonRpc(id: number, dst: string, result: any): outgoing_jsonrpc {
+export function buildRpcRequest(
+    id: number,
+    method: string,
+    params?: object,
+    dst?: string
+) {
     return {
         jsonrpc: '2.0',
         id,
         src: 'FLEET_MANAGER',
         dst,
-        result
-    }
+        method,
+        params,
+    };
 }
 
-export function buildOutgoingJsonRpcError(error_code: number, id: number | null, dst?: string, message: string | null = "") {
+export function buildOutgoingJsonRpc(
+    id: number,
+    dst: string,
+    result: any
+): outgoing_jsonrpc {
+    return {
+        jsonrpc: '2.0',
+        id,
+        src: 'FLEET_MANAGER',
+        dst,
+        result,
+    };
+}
+
+export function buildOutgoingEvent(dst: string, component: string, event: string) {
+    return {
+        src: 'FLEET_MANAGER',
+        dst,
+        method: 'NotifyEvent',
+        params: {
+            ts: Date.now(),
+            events: [
+                {
+                    component,
+                    event,
+                },
+            ],
+        },
+    } satisfies jsonrpc_outgoing_event;
+}
+
+export function buildOutgoingStatus(dst: string, patch: object) {
+    return {
+        src: 'FLEET_MANAGER',
+        dst,
+        method: 'NotifyStatus',
+        params: {
+            ts: Date.now(),
+            ...patch,
+        },
+    } satisfies jsonrpc_outgoing_status;
+}
+
+export function buildOutgoingJsonRpcError(
+    error_code: number,
+    id: number | null = null,
+    dst?: string,
+    message: string | null = ''
+) {
     let error: outgoing_jsonrpc_error = {
         jsonrpc: '2.0',
         id,
@@ -64,26 +148,29 @@ export function buildOutgoingJsonRpcError(error_code: number, id: number | null,
         dst,
         error: {
             code: error_code,
-            message: message ?? ""
-        }
-    }
+            message: message ?? '',
+        },
+    };
 
     if (error.error.message == null || error.error.message.length == 0) {
         switch (error_code) {
+            case ERROR_CODES.TIMEOUT_ERROR:
+                error.error.message = 'Time out';
+                break;
             case ERROR_CODES.PARSE_ERROR:
-                error.error.message = "Parse error";
+                error.error.message = 'Parse error';
                 break;
             case ERROR_CODES.INVALID_REQUEST:
-                error.error.message = "Invalid request";
+                error.error.message = 'Invalid request';
                 break;
             case ERROR_CODES.METHOD_NOT_FOUND:
-                error.error.message = "Method not found";
+                error.error.message = 'Method not found';
                 break;
             case ERROR_CODES.INVALID_PARAMS:
-                error.error.message = "Invalid params";
+                error.error.message = 'Invalid params';
                 break;
             default:
-                error.error.message = "Server error";
+                error.error.message = 'Server error';
                 break;
         }
     }

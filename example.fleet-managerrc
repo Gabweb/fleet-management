@@ -1,0 +1,63 @@
+{
+    "components": {
+        "group": {
+            "groups": {},
+            "enable": true
+        },
+        "mail": {
+            "enable": false
+        },
+        "mdns": {
+            "enable": false
+        },
+        "storage": {
+            "enable": true,
+            "items": {}
+        },
+        "user": {
+            "users": {
+                "shelly": {
+                    "username": "shelly",
+                    "password": "shelly",
+                    "permissions": [
+                        "*"
+                    ],
+                    "group": "admin",
+                    "enabled": true
+                },
+                "user": {
+                    "username": "user",
+                    "password": "user",
+                    "permissions": [
+                        "fleetmanager.subscribe",
+                        "device.list",
+                        "entity.list"
+                    ],
+                    "group": "user",
+                    "enabled": true
+                }
+            },
+            "allowDebugUser": false
+        },
+        "web": {
+            "port": 3000,
+            "port_ssl": -1,
+            "https_crt": "/path/to/cert.crt",
+            "https_key": "/path/to/cert.key",
+            "jwt_token": "shelly-secret-token"
+        }
+    },
+    "internalStorage": {
+        "connection": {
+            "host": "localhost",
+            "user": "postgres",
+            "max": 40,
+            "password": "mysecretpassword",
+            "database": "em"
+        },
+        "schema": "migration",
+        "cwd": [
+            "./db/migration/postgresql"
+        ]
+    }
+}

@@ -1,21 +1,23 @@
-import Component from "./Component";
-import * as mdns from "../../controller/mdns";
+import Component from './Component';
+import * as MdnsModule from '../../modules/Mdns';
 
-export default class MdnsComponent extends Component {
+export interface MdnsComponentConfig {
+    enable: boolean;
+}
 
-    constructor(){
-        super("mdns");
+export default class MdnsComponent extends Component<MdnsComponentConfig> {
+    constructor() {
+        super('mdns');
     }
 
     override getStatus(params?: any) {
         return {
-            running: mdns.started(),
-            devices: mdns.devices
-        }
+            running: MdnsModule.started(),
+        };
     }
 
     protected override checkConfigKey(key: string, value: any): boolean {
-        switch(key){
+        switch (key) {
             case 'enable':
                 return typeof value === 'boolean';
             default:
@@ -23,20 +25,25 @@ export default class MdnsComponent extends Component {
         }
     }
 
-    protected override applyConfigKey(key: string, value: any, config: Record<string, any>): void {
-        if(key === 'enable'){
-            if(value && !mdns.started()){
-                mdns.start();
-            } else if(!value && mdns.started()){
-                mdns.stop();
+    protected override applyConfigKey(
+        key: string,
+        value: any,
+        config: MdnsComponentConfig,
+        init: boolean
+    ): void {
+        if (key === 'enable') {
+            if (value && !MdnsModule.started()) {
+                MdnsModule.start();
+            } else if (!value && MdnsModule.started()) {
+                MdnsModule.stop();
             }
         }
         super.applyConfigKey(key, value, config);
     }
 
-    protected override getDefaultConfig(): Record<string, any> {
+    protected override getDefaultConfig() {
         return {
-            enable: false
-        }
+            enable: false,
+        };
     }
 }

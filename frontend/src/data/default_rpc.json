@@ -1,0 +1,242 @@
+{
+    "Shelly": {
+        "GetStatus": {
+            "method": "Shelly.GetStatus",
+            "params": {}
+        },
+        "GetConfig": {
+            "method": "Shelly.GetConfig",
+            "params": {}
+        },
+        "ListMethods": {
+            "method": "Shelly.ListMethods",
+            "params": {}
+        },
+        "GetDeviceInfo": {
+            "method": "Shelly.GetDeviceInfo",
+            "params": {
+                "ident": false
+            }
+        },
+        "CheckForUpdate": {
+            "method": "Shelly.CheckForUpdate",
+            "params": {}
+        },
+        "FactoryReset": {
+            "method": "Shelly.FactoryReset",
+            "params": {}
+        },
+        "Reboot": {
+            "method": "Shelly.Reboot",
+            "params": {}
+        }
+    },
+    "Switch": {
+        "Toggle": {
+            "method": "Switch.Toggle",
+            "params": {
+                "id": 0
+            }
+        },
+        "SetConfig": {
+            "method": "Switch.SetConfig",
+            "params": {
+                "id": 0,
+                "config": "{}"
+            }
+        },
+        "GetConfig": {
+            "method": "Switch.GetConfig",
+            "params": {
+                "id": 0
+            }
+        },
+        "GetStatus": {
+            "method": "Switch.GetStatus",
+            "params": {
+                "id": 0
+            }
+        },
+        "Set": {
+            "method": "Switch.Set",
+            "params": {
+                "id": 0,
+                "on": true,
+                "toggle_after": 0
+            }
+        }
+    },
+    "Light": {
+        "Toggle": {
+            "method": "Light.Toggle",
+            "params": {
+                "id": 0
+            }
+        },
+        "SetConfig": {
+            "method": "Light.SetConfig",
+            "params": {
+                "id": 0,
+                "config": "{}"
+            }
+        },
+        "GetConfig": {
+            "method": "Light.GetConfig",
+            "params": {
+                "id": 0
+            }
+        },
+        "GetStatus": {
+            "method": "Light.GetStatus",
+            "params": {
+                "id": 0
+            }
+        },
+        "Set": {
+            "method": "Light.Set",
+            "params": {
+                "id": 0,
+                "on": true,
+                "toggle_after": 0,
+                "brightness": 100
+            }
+        }
+    },
+    "RGB": {
+        "Toggle": {
+            "method": "RGB.Toggle",
+            "params": {
+                "id": 0
+            }
+        },
+        "SetConfig": {
+            "method": "RGB.SetConfig",
+            "params": {
+                "id": 0,
+                "config": "{}"
+            }
+        },
+        "GetConfig": {
+            "method": "RGB.GetConfig",
+            "params": {
+                "id": 0
+            }
+        },
+        "GetStatus": {
+            "method": "RGB.GetStatus",
+            "params": {
+                "id": 0
+            }
+        },
+        "Set": {
+            "method": "RGB.Set",
+            "params": {
+                "id": 0,
+                "on": true,
+                "rgb": [ 50, 50, 50 ],
+                "brightness": 100,
+                "toggle_after": 0
+            }
+        }
+    },
+    "RGBW": {
+        "Toggle": {
+            "method": "RGBW.Toggle",
+            "params": {
+                "id": 0
+            }
+        },
+        "SetConfig": {
+            "method": "RGBW.SetConfig",
+            "params": {
+                "id": 0,
+                "config": "{}"
+            }
+        },
+        "GetConfig": {
+            "method": "RGBW.GetConfig",
+            "params": {
+                "id": 0
+            }
+        },
+        "GetStatus": {
+            "method": "RGBW.GetStatus",
+            "params": {
+                "id": 0
+            }
+        },
+        "Set": {
+            "method": "RGBW.Set",
+            "params": {
+                "id": 0,
+                "on": true,
+                "rgb": [ 50, 50, 50 ],
+                "brightness": 100,
+                "white": 100,
+                "toggle_after": 0
+            }
+        }
+    },
+    "BLE": {
+        "SetConfig": {
+            "method": "BLE.SetConfig",
+            "params": {
+                "config": "{\"enable\": true}"
+            }
+        },
+        "GetConfig": {
+            "method": "BLE.GetConfig",
+            "params": {}
+        },
+        "GetStatus": {
+            "method": "BLE.GetStatus",
+            "params": {}
+        }
+    },
+    "Cover": {
+        "Open": {
+            "method": "Cover.Open",
+            "params": {
+                "id": 0
+            }
+        },
+        "Close": {
+            "method": "Cover.Close",
+            "params": {
+                "id": 0
+            }
+        },
+        "Stop": {
+            "method": "Cover.Stop",
+            "params": {
+                "id": 0
+            }
+        },
+        "SetConfig": {
+            "method": "Cover.SetConfig",
+            "params": {
+                "id": 0,
+                "config": "{}"
+            }
+        },
+        "GetConfig": {
+            "method": "Cover.GetConfig",
+            "params": {
+                "id": 0
+            }
+        },
+        "GetStatus": {
+            "method": "Cover.GetStatus",
+            "params": {
+                "id": 0
+            }
+        },
+        "GoToPosition": {
+            "method": "Cover.GoToPosition",
+            "params": {
+                "id": 0,
+                "position": 0
+            }
+        }
+    }
+}

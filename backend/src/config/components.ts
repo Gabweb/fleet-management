@@ -1,22 +1,46 @@
-import path from "path";
-import { CFG_FOLDER } from ".";
-import * as fs from "fs";
+import path from 'node:path';
+import { writeFile, readFile } from 'node:fs/promises';
+import { existsSync, readFileSync } from 'node:fs';
+import { CFG_FOLDER } from '.';
 
-const COMPONENT_CONFIG_FOLDER = path.join(CFG_FOLDER, "components");
+const COMPONENT_CONFIG_FOLDER = path.join(CFG_FOLDER, 'components');
 
-function getCfgPath(component: string){
-    return path.join(path.join(COMPONENT_CONFIG_FOLDER, encodeURIComponent(component) + '.json'));
+function getCfgPath(component: string) {
+    return path.join(
+        path.join(COMPONENT_CONFIG_FOLDER, encodeURIComponent(component) + '.json')
+    );
 }
 
-export function getConfigFor(component: string, defaultConfig: Record<string, any>){
-    const cfgPath = getCfgPath(component);
-    if(fs.existsSync(cfgPath)){
-        return JSON.parse(fs.readFileSync(cfgPath, 'utf-8')) || {}
+export function getConfigSync(
+    componentName: string,
+    defaultConfig: Record<string, any>
+) {
+    const cfgPath = getCfgPath(componentName);
+    if (existsSync(cfgPath)) {
+        let contents;
+        try {
+            contents = readFileSync(cfgPath, 'utf-8');
+            return JSON.parse(contents);
+        } catch (error) {
+            console.error('failed to parse config', cfgPath, contents);
+        }
     }
     return defaultConfig;
 }
 
-export function saveConfig(component: string, config: any){
+export async function getConfig(
+    component: string,
+    defaultConfig: Record<string, any>
+) {
     const cfgPath = getCfgPath(component);
-    fs.writeFileSync(cfgPath, JSON.stringify(config, undefined, 4));
+    if (existsSync(cfgPath)) {
+        const contents = await readFile(cfgPath, 'utf-8');
+        return JSON.parse(contents);
+    }
+    return defaultConfig;
+}
+
+export async function saveConfig(component: string, config: any) {
+    const cfgPath = getCfgPath(component);
+    return writeFile(cfgPath, JSON.stringify(config));
 }
