@@ -1,0 +1,11 @@
+--------------UP
+CREATE TABLE ui.config(
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    name VARCHAR(300) NULL,
+    json JSONB NULL
+);
+CREATE UNIQUE INDEX ui_config_id ON ui.config(id);
+--------------DOWN
+DROP TABLE ui.config;

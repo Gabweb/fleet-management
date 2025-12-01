@@ -1,0 +1,15 @@
+.git
+.vscode
+*/.vscode
+logs
+*/logs
+dev
+node_modules
+*/node_modules
+*/package-lock.json
+*/**/package-lock.json
+dist
+*/dist
+/frontend/src/pages/plugin
+/backend/plugins
+

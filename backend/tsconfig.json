@@ -1,0 +1,25 @@
+{
+    "compilerOptions": {
+        "incremental": true,
+        "target": "ES2022",
+        "lib": ["ES2022", "ESNext.Decorators", "DOM"],
+        "module": "NodeNext",
+        "rootDir": "src",
+        "sourceMap": true,
+        "outDir": "./dist",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noImplicitAny": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "exactOptionalPropertyTypes": false,
+        "noImplicitReturns": true,
+        "noImplicitOverride": true,
+        "skipLibCheck": true,
+        "listEmittedFiles": true,
+        "typeRoots": ["./types"]
+    },
+    "include": ["src/**/*.ts"],
+    "exclude": ["node_modules"]
+}

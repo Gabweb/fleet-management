@@ -1,0 +1,12 @@
+--------------UP
+CREATE TABLE device_group.list (
+    id INTEGER PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    created TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated TIMESTAMP WITH TIME ZONE DEFAULT NULL,
+    name VARCHAR(300) NULL
+);
+CREATE UNIQUE INDEX device_group_list_id ON device_group.list (id);
+--------------DOWN
+DROP TABLE device_group.list;
