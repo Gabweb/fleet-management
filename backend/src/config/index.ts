@@ -172,9 +172,7 @@ if (DEV_MODE) {
 }
 
 function getLoginStrategy() {
-  if (configRc?.oidc?.backend) {
-    return "zitadel-introspection";
-  }
-
+  // Local deployments in this repository are JWT-only.
+  // Keep Zitadel disabled even if OIDC config is present.
   return "backend-jwt";
 }

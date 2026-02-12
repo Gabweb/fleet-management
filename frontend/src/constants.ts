@@ -33,14 +33,8 @@ function isOidcValid(obj: any): boolean {
 }
 
 function getLoginType() {
-    const VITE_FE_LOGIN_STRATEGY = import.meta.env.VITE_FE_LOGIN_STRATEGY;
-    if (typeof VITE_FE_LOGIN_STRATEGY === 'string' && VITE_FE_LOGIN_STRATEGY === 'backend-jwt') {
-        return 'backend-jwt';
-    }
-    if (isOidcValid(OIDC_CONFIG)) {
-        return 'zitadel';
-    }
-
+    // This repository is configured to use backend JWT auth only.
+    // Zitadel/OIDC is intentionally disabled.
     return 'backend-jwt';
 }
 

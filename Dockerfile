@@ -9,14 +9,15 @@ RUN mkdir -p /app/backend && mkdir -p /app/frontend/src/pages/plugin && mkdir /a
 WORKDIR /app
 RUN npm install typescript
 RUN ls -la ./
-COPY ./.VERSION /app/
 
 ## backend
 WORKDIR /app/backend
 COPY ./backend /app/backend
-COPY ./npmrc/.npmrc /app/backend/.npmrc
-RUN npm install && /app/node_modules/typescript/bin/tsc --build --force
-RUN rm /app/backend/.npmrc
+ARG BACKEND_NPMRC=""
+RUN if [ -n "$BACKEND_NPMRC" ]; then printf "%s" "$BACKEND_NPMRC" > /app/backend/.npmrc; fi \
+    && npm install \
+    && /app/node_modules/typescript/bin/tsc --build --force \
+    && rm -f /app/backend/.npmrc
 ## backend END
 
 ## frontend

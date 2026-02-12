@@ -11,6 +11,8 @@ services:
       - "5434:5432"
     environment:
       POSTGRES_PASSWORD: mysecretpassword
+      TS_TUNE_MEMORY: 512MB
+      TS_TUNE_NUM_CPUS: 2
     networks:
       - fleet-net
     tty: true
@@ -21,7 +23,7 @@ services:
         max-size: "1m"
         max-file: "5"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -37,31 +39,63 @@ services:
       - /bin/sh
       - -c
       - |
-        psql postgres://postgres:mysecretpassword@timescale-fleet-manager:5432 \
-          -c "CREATE DATABASE \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "\\connect \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "CREATE USER \"fc0923d4b5bb24eba7fd84f5c5c93889\" WITH ENCRYPTED PASSWORD 'fc0923d4b5bb24eba7fd84f5c5c93889';" \
-          -c "GRANT ALL PRIVILEGES ON DATABASE \"fc0923d4b5bb24eba7fd84f5c5c93889\" TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL ON SCHEMA _timescaledb_cache TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL ON SCHEMA _timescaledb_catalog TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL ON SCHEMA _timescaledb_config TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL ON SCHEMA _timescaledb_debug TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL ON SCHEMA _timescaledb_functions TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL ON SCHEMA _timescaledb_internal TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_cache TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_catalog TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_config TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_debug TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_functions TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-          -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_internal TO \"fc0923d4b5bb24eba7fd84f5c5c93889\";" \
-        && \
-        psql postgres://fc0923d4b5bb24eba7fd84f5c5c93889:fc0923d4b5bb24eba7fd84f5c5c93889@timescale-fleet-manager:5432/fc0923d4b5bb24eba7fd84f5c5c93889 \
-          -c "CREATE SCHEMA IF NOT EXISTS migration AUTHORIZATION \"fc0923d4b5bb24eba7fd84f5c5c93889\";"
+        DB_NAME="fc0923d4b5bb24eba7fd84f5c5c93889"
+        DB_USER="fc0923d4b5bb24eba7fd84f5c5c93889"
+        DB_PASS="fc0923d4b5bb24eba7fd84f5c5c93889"
+        ADMIN_DSN="postgres://postgres:mysecretpassword@timescale-fleet-manager:5432/postgres"
+        DB_DSN="postgres://$${DB_USER}:$${DB_PASS}@timescale-fleet-manager:5432/$${DB_NAME}"
+
+        psql "$${ADMIN_DSN}" -v ON_ERROR_STOP=1 <<SQL
+        DO \$\$
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$${DB_USER}') THEN
+            EXECUTE format('CREATE ROLE %I LOGIN PASSWORD %L', '$${DB_USER}', '$${DB_PASS}');
+          END IF;
+        END
+        \$\$;
+        SELECT format('CREATE DATABASE %I', '$${DB_NAME}')
+        WHERE NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '$${DB_NAME}') \gexec
+        GRANT ALL PRIVILEGES ON DATABASE "$${DB_NAME}" TO "$${DB_USER}";
+        \connect "$${DB_NAME}";
+        GRANT ALL ON SCHEMA _timescaledb_cache TO "$${DB_USER}";
+        GRANT ALL ON SCHEMA _timescaledb_catalog TO "$${DB_USER}";
+        GRANT ALL ON SCHEMA _timescaledb_config TO "$${DB_USER}";
+        GRANT ALL ON SCHEMA _timescaledb_functions TO "$${DB_USER}";
+        GRANT ALL ON SCHEMA _timescaledb_internal TO "$${DB_USER}";
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_cache TO "$${DB_USER}";
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_catalog TO "$${DB_USER}";
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_config TO "$${DB_USER}";
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_functions TO "$${DB_USER}";
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA _timescaledb_internal TO "$${DB_USER}";
+        DO \$\$
+        BEGIN
+          IF EXISTS (
+            SELECT 1
+            FROM information_schema.schemata
+            WHERE schema_name = '_timescaledb_debug'
+          ) THEN
+            EXECUTE format('GRANT ALL ON SCHEMA %I TO %I', '_timescaledb_debug', '$${DB_USER}');
+            EXECUTE format(
+              'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA %I TO %I',
+              '_timescaledb_debug',
+              '$${DB_USER}'
+            );
+          END IF;
+        END
+        \$\$;
+        SQL
+
+        psql "$${DB_DSN}" -v ON_ERROR_STOP=1 <<SQL
+        CREATE SCHEMA IF NOT EXISTS migration AUTHORIZATION "$${DB_USER}";
+        SQL
 
   fleet-management-fc0923d4b5bb24eba7fd84f5c5c93889:
     container_name: fleet-management-fc0923d4b5bb24eba7fd84f5c5c93889
     user: "${UID:-1000}"
-    image: shellygroup/fleet-management:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: fleet-management:local
     depends_on:
       timescale-fleet-manager:
         condition: "service_healthy"
@@ -73,6 +107,8 @@ services:
       fleet-manager_internalStorage__connection__user: fc0923d4b5bb24eba7fd84f5c5c93889
       fleet-manager_internalStorage__connection__password: fc0923d4b5bb24eba7fd84f5c5c93889
       fleet-manager_internalStorage__connection__database: fc0923d4b5bb24eba7fd84f5c5c93889
+      fleet-manager_root-user__username: admin
+      fleet-manager_root-user__password: admin
       PLUGINS_FOLDER: /app/backend/plugins
     volumes:
       - "/run/dbus:/run/dbus:z"
@@ -92,6 +128,7 @@ services:
 
 networks:
   fleet-net:
+
 
 volumes:
   timescale-fleet-manager-v:
