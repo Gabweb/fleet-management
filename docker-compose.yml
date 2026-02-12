@@ -20,10 +20,6 @@ services:
       options:
         max-size: "1m"
         max-file: "5"
-    deploy:
-      resources:
-        limits:
-          memory: "1024M"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
       interval: 30s
@@ -88,11 +84,6 @@ services:
       - fleet-net
     ports:
       - "7011:7011"
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 1024M
     logging:
       driver: json-file
       options:
